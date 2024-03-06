@@ -1,38 +1,68 @@
 extends KinematicBody2D
 
-const UP = Vector2(0, -1)
+const GRAVITY = 20
+const NORMAL_SPEED = 400
+const JUMP_POWER = 400
+const MAX_JUMP_COUNT = 2
 
-export var speed: int = 400
-export var GRAVITY: int = 1200
-export var jump_speed: int = -400
+var motion = Vector2()
+var jumpCount = 0
 
-var velocity: Vector2 = Vector2()
-
-
-func get_input():
-	velocity.x = 0
-	if is_on_floor() and Input.is_action_just_pressed("jump"):
-		velocity.y = jump_speed
-	if Input.is_action_pressed("right"):
-		velocity.x += speed
-	if Input.is_action_pressed("left"):
-		velocity.x -= speed
-
+export var deathScreen = "LoseScreen"
 
 func _physics_process(_delta):
-	velocity.y += delta * GRAVITY
-	get_input()
-	velocity = move_and_slide(velocity, UP)
+	apply_gravity()
 
+	handle_input()
 
-func _process(_delta):
-	if velocity.y != 0:
-		$Animator.play("Jump")
-	elif velocity.x != 0:
-		$Animator.play("Walk")
-		if velocity.x > 0:
-			$Sprite.flip_h = false
-		else:
-			$Sprite.flip_h = true
+	motion = move_and_slide(motion, Vector2.UP)
+	
+	if motion.y > 1100:
+		death_screen()
+
+func apply_gravity():
+	motion.y += GRAVITY
+
+func handle_input():
+	var speed = NORMAL_SPEED
+		
+	if Input.is_action_pressed("jump"):
+		handle_jump_input()
+		
 	else:
-		$Animator.play("Idle")
+		handle_movement_input(speed)
+
+func handle_movement_input(speed):
+	if Input.is_action_pressed("move_left"):
+		move_left(speed)
+		
+	elif Input.is_action_pressed("move_right"):
+		move_right(speed)
+		
+	else:
+		stop_movement()
+
+func handle_jump_input():
+	if is_on_floor() and jumpCount != 0:
+		jumpCount = 0
+
+	if jumpCount < MAX_JUMP_COUNT and Input.is_action_just_pressed("jump"):
+		motion.y = -JUMP_POWER
+		jumpCount += 1
+
+func move_left(speed=NORMAL_SPEED):
+	motion.x = -speed
+	$AnimatedSprite.flip_h = true
+	$AnimatedSprite.play("walk")
+
+func move_right(speed=NORMAL_SPEED):
+	motion.x = speed
+	$AnimatedSprite.flip_h = false
+	$AnimatedSprite.play("walk")
+
+func stop_movement():
+	motion.x = 0
+	$AnimatedSprite.play("idle")
+	
+func death_screen():
+	get_tree().change_scene(str("res://scenes/" + deathScreen + ".tscn"))
